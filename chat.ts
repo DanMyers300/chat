@@ -1,5 +1,4 @@
-const url = "http://ec2-54-205-224-34.compute-1.amazonaws.com:11434"
-
+const url = ""
 const api = "/api/generate"
 
 const headers =  {
@@ -9,22 +8,32 @@ const headers =  {
 const request = {
   "model": "tinyllama",
   "prompt": "What's the benefit of using cloud computing",
-  "stream": false
+  "stream": true
 }
 
-const main = () => {
-  fetch(url+api, {
+const main = async () => {
+  const response = await fetch(url+api, {
     method: 'POST',
     headers: headers,
     body: JSON.stringify(request),
-  })
-  .then((result) => result.json())
-  .then((result) => {
-    console.log(result.response);
-  })
-  .catch((error) => {
-    throw new Error(error);
-  })
+  });
+
+  if (!response.body) {
+    throw new Error("No Response Body");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break;
+
+    const chunk = decoder.decode(value, {stream: true});
+    let word = JSON.parse(chunk);
+    word = word.response;
+    process.stdout.write(word);
+  }
 }
 
-main()
+main().catch(console.error);
