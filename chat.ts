@@ -1,19 +1,19 @@
-const url = ""
-const api = "/api/generate"
+const url = "http://localhost:11434";
+const api = "/api/generate";
 
-const headers =  {
-  'Content-Type': 'application/json'
-}
+const headers = {
+  "Content-Type": "application/json",
+};
 
 const request = {
-  "model": "tinyllama",
-  "prompt": "What's the benefit of using cloud computing",
-  "stream": true
-}
+  model: "tinyllama",
+  prompt: "What's the benefit of using cloud computing",
+  stream: true,
+};
 
 const main = async () => {
-  const response = await fetch(url+api, {
-    method: 'POST',
+  const response = await fetch(url + api, {
+    method: "POST",
     headers: headers,
     body: JSON.stringify(request),
   });
@@ -24,16 +24,30 @@ const main = async () => {
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let buffer = "";
 
   while (true) {
-    const { value, done } = await reader.read()
+    const { value, done } = await reader.read();
     if (done) break;
 
-    const chunk = decoder.decode(value, {stream: true});
-    let word = JSON.parse(chunk);
-    word = word.response;
-    process.stdout.write(word);
+    buffer += decoder.decode(value, { stream: true });
+
+    // Process each line (assuming NDJSON)
+    let lines = buffer.split("\n");
+    buffer = lines.pop()!; // Last line may be incomplete, keep it in buffer
+
+    for (const line of lines) {
+      if (line.trim() === "") continue;
+      try {
+        const word = JSON.parse(line);
+        process.stdout.write(word.response);
+      } catch (e) {
+        // Optionally log or handle parse errors
+        console.error("Failed to parse line:", line);
+      }
+    }
   }
-}
+};
 
 main().catch(console.error);
+
